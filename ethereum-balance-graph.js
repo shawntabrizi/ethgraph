@@ -205,3 +205,39 @@ async function graphBalance() {
         document.getElementById("output").innerHTML = error;
     }
 }
+
+// Detect Querystrings
+function parseQueryStrings() {
+    var queryStrings = {};
+    //Parse URL
+    var url = window.location.search.substring(1);
+    if (url) {
+        //split querystrings
+        var pairs = url.split("&");
+        for (pair in pairs) {
+            pairArray = pairs[pair].split("=");
+            queryStrings[pairArray[0]] = pairArray[1]
+        }
+    }
+
+    return queryStrings;
+}
+
+// On load, check if querystrings are present
+window.onload = function () {
+    // Check for querystrings
+    var queryStrings = parseQueryStrings();
+    // Set starting block
+    if (queryStrings['start']) {
+        document.getElementById('startBlock').value = queryStrings['start'];
+    }
+    // Set ending block
+    if (queryStrings['end']) {
+        document.getElementById('endBlock').value = queryStrings['end'];
+    }
+    // Set address, and run query
+    if (queryStrings['address']) {
+        document.getElementById('address').value = queryStrings['address'];
+        graphBalance();
+    }
+}
