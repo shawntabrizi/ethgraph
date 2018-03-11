@@ -52,6 +52,11 @@ async function getBalanceInRange(address, startBlock, endBlock) {
     document.getElementById('startBlock').value = startBlock;
     document.getElementById('endBlock').value = endBlock;
 
+    // Update window URL to contain querystring, making it easy to share
+    var url = [location.protocol, '//', location.host, location.pathname].join('');
+    url += "?address=" + global.address + "&start=" + startBlock + "&end=" + endBlock;
+    window.history.replaceState({ path: url }, '', url);
+
     // Calculate the step size given the range of blocks and the number of points we want
     var step = Math.floor((endBlock - startBlock) / global.pointCount)
     // Make sure step is at least 1
