@@ -1,24 +1,55 @@
-﻿<!DOCTYPE html>
-<html>
+﻿<!doctype html>
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <link rel="icon" href="">
+
+    <title>ETH Balance Graph</title>
+
+    <!-- Bootstrap core CSS -->
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
-
 </head>
-<body>
-    <h1>ETH Balance Graph</h1>
-    <p>Enter an Ethereum Address:</p>
-    <input type="text" size="50" id="address" value="0x2Fa0ac498D01632f959D3C18E38f4390B005e200" />
-    <button type="button" onClick="graphBalance();">Graph Balance</button>
-    <br />
-    <br />
-    <div id="graph" style="width:600px;height:600px;"></div>
 
-    <!-- Boostrap -->
+<body>
+    <div class="container">
+        <div class="jumbotron mt-3">
+            <h1>ETH Balance Graph</h1>
+            <p class="lead">Graph the ETH Balance history of an Ethereum address.</p>
+            <div class="input-group">
+                <input type="text" class="form-control" id="address" value="0x2fa0ac498d01632f959d3c18e38f4390b005e200" />
+                <div class="input-group-append">
+                    <a class="btn btn-lg btn-primary" onclick="graphBalance();" role="button">Graph Balance &raquo;</a>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col">
+                    <label for="startBlock">Start Block: </label>
+                    <input type="text" class="form-control" id="startBlock" placeholder="(optional)"/>
+                </div>
+                <div class="col">
+                    <label for="endBlock">End Block: </label>
+                    <input type="text" class="form-control" id="endBlock" placeholder="(optional)"/>
+                </div>
+            </div>
+            <div id="output"></div>
+        </div>
+        <div id="graph" style="width:100%;height:600px;"></div>
+    </div>
+    <div class="fixed-bottom bg-light">
+        <p class="text-center text-muted">Created by <a href="http://shawntabrizi.com">Shawn Tabrizi</a> - Source on <a href="https://github.com/shawntabrizi/ETH-Balance-graph">GitHub</a> - Tutorial to create this - Using <a href="https://plot.ly/javascript/">Plotly.js</a> and <a href="https://github.com/ethereum/web3.js/">Web3.js</a></p>
+    </div>
+
+    <!-- Bootstrap core JavaScript
+    ================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
     <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
-    <!-- JavaScript -->
+    
+    <!-- Custom JavaScript -->
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <script src="./web3.min.js"></script>
     <script src="./ethereum-balance-graph.js"></script>
