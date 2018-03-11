@@ -44,6 +44,13 @@ async function getFirstBlock(address) {
     }
 }
 
+// Update window URL to contain querystring, making it easy to share
+function updateUrl(startBlock, endBlock) {
+    var url = [location.protocol, '//', location.host, location.pathname].join('');
+    url += "?address=" + global.address + "&start=" + startBlock + "&end=" + endBlock;
+    window.history.replaceState({ path: url }, '', url);
+}
+
 // Given an address and a range of blocks, query the Ethereum blockchain for the ETH balance across the range
 async function getBalanceInRange(address, startBlock, endBlock) {
     var promises = []
@@ -52,10 +59,8 @@ async function getBalanceInRange(address, startBlock, endBlock) {
     document.getElementById('startBlock').value = startBlock;
     document.getElementById('endBlock').value = endBlock;
 
-    // Update window URL to contain querystring, making it easy to share
-    var url = [location.protocol, '//', location.host, location.pathname].join('');
-    url += "?address=" + global.address + "&start=" + startBlock + "&end=" + endBlock;
-    window.history.replaceState({ path: url }, '', url);
+    //Update window URL
+    updateUrl(startBlock, endBlock);
 
     // Calculate the step size given the range of blocks and the number of points we want
     var step = Math.floor((endBlock - startBlock) / global.pointCount)
