@@ -63,7 +63,6 @@ async function getBalanceInRange(address, startBlock, endBlock) {
     document.getElementById("output").innerHTML = "Loading";
 
     try {
-        console.log(startBlock, endBlock)
         // Loop over the blocks, using the step value
         for (let i = startBlock; i < endBlock; i = i + step) {
             // If we already have data about that block, skip it
@@ -188,7 +187,7 @@ async function graphBalance() {
         if (document.getElementById('endBlock').value) {
             endBlock = parseInt(document.getElementById('endBlock').value);
         } else {
-            endBlock = parseInt(web3.eth.blockNumber);
+            endBlock = parseInt(await promisify(cb => web3.eth.getBlockNumber(cb)));
         }
 
         // Check that the address actually has transactions to show
