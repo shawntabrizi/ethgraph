@@ -233,9 +233,14 @@ function parseQueryStrings() {
 }
 
 // On load, check if querystrings are present
-window.onload = function () {
+window.onload = async function () {
     // Check for querystrings
     var queryStrings = parseQueryStrings();
+    // Set address, and run query from first transaction block to current block
+    if (queryStrings['address']) {
+        document.getElementById('address').value = queryStrings['address'];
+        await graphBalance();
+    }
     // Set starting block
     if (queryStrings['start']) {
         document.getElementById('startBlock').value = queryStrings['start'];
@@ -244,9 +249,9 @@ window.onload = function () {
     if (queryStrings['end']) {
         document.getElementById('endBlock').value = queryStrings['end'];
     }
-    // Set address, and run query
-    if (queryStrings['address']) {
-        document.getElementById('address').value = queryStrings['address'];
-        graphBalance();
+    // Adjust range to be what the querystring wants
+    if (queryStrings['start'] || queryStrings['end']) {
+        Plotly.relayout('graph', 'xaxis.range', [document.getElementById('startBlock').value, document.getElementById('endBlock').value]);
     }
+
 }
