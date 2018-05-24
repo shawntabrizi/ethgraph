@@ -174,7 +174,7 @@ $('#graph').on('plotly_relayout', async function (eventdata) {
         x: unpack(global.balances, 'block'),
         y: unpack(global.balances, 'balance'),
         hoverinfo: "y+text",
-        text: unpack(balances, 'time')
+        text: unpack(global.balances, 'time')
     }
 
     // Add new trace, then remove the old one... is there a better way to do this?
