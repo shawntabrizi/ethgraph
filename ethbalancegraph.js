@@ -53,7 +53,6 @@ function updateUrl(startBlock, endBlock) {
 
 // Given an address and a range of blocks, query the Ethereum blockchain for the ETH balance across the range
 async function getBalanceInRange(address, startBlock, endBlock) {
-    var promises = []
 
     //Update UX with Start and End Block
     document.getElementById('startBlock').value = startBlock;
@@ -73,24 +72,33 @@ async function getBalanceInRange(address, startBlock, endBlock) {
     document.getElementById("output").innerHTML = "Loading";
 
     try {
+        var promises = []
+
         // Loop over the blocks, using the step value
         for (let i = startBlock; i < endBlock; i = i + step) {
             // If we already have data about that block, skip it
             if (!global.balances.find(x => x.block == i)) {
                 // Create a promise to query the ETH balance for that block
-                let promise = promisify(cb => web3.eth.getBalance(address, i, cb));
-                // Queue the promise and include data about the block for output 
-                promises.push(promise
-                    .then(balance => (
-                        {
-                            block: i,
-                            balance: parseFloat(web3.fromWei(balance, 'ether'))
-                        })));
+                let balancePromise = promisify(cb => web3.eth.getBalance(address, i, cb));
+                // Create a promise to get the timestamp for that block
+                let timePromise = promisify(cb => web3.eth.getBlock(i, cb));
+                // Push data to a linear array of promises to run in parellel.
+                promises.push(i, balancePromise, timePromise)
             }
         }
 
-        // Call all promises in parellel for speed, result is array of {block: <block>, balance: <ETH balance>}
-        var balances = await Promise.all(promises);
+        // Call all promises in parallel for speed, result is array of {block: <block>, balance: <ETH balance>}
+        var results = await Promise.all(promises);
+
+        // Restructure the data into an array of objects
+        var balances = []
+        for (let i = 0; i < results.length; i = i + 3) {
+            balances.push({
+                block: results[i],
+                balance: parseFloat(web3.fromWei(results[i + 1], 'ether')),
+                time: results[i + 2].timestamp
+            })
+        }
 
         //Remove loading message
         document.getElementById("output").innerHTML = "";
@@ -184,14 +192,14 @@ async function graphBalance() {
 
         // Get address from input
         global.address = document.getElementById("address").value;
-        
+
         // Find the intial range, from first block to current block
         var startBlock, endBlock;
 
         if (document.getElementById('startBlock').value) {
             startBlock = parseInt(document.getElementById('startBlock').value);
         } else {
-             startBlock = parseInt(await getFirstBlock(global.address));
+            startBlock = parseInt(await getFirstBlock(global.address));
         }
 
         if (document.getElementById('endBlock').value) {
