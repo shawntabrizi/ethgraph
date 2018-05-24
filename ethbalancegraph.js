@@ -96,7 +96,7 @@ async function getBalanceInRange(address, startBlock, endBlock) {
             balances.push({
                 block: results[i],
                 balance: parseFloat(web3.fromWei(results[i + 1], 'ether')),
-                time: results[i + 2].timestamp
+                time: new Date(results[i + 2].timestamp * 1000)
             })
         }
 
@@ -125,7 +125,10 @@ function createGraph(balances) {
         mode: "lines",
         x: unpack(balances, 'block'),
         y: unpack(balances, 'balance'),
+        hoverinfo: "y+text",
+        text: unpack(balances, 'time')
     }
+
 
     // Settings for the graph
     var layout = {
@@ -140,7 +143,7 @@ function createGraph(balances) {
             autorange: true,
             type: 'linear',
             title: 'ETH Balance'
-        },
+        }
     };
 
     Plotly.newPlot('graph', [trace], layout);
@@ -170,6 +173,8 @@ $('#graph').on('plotly_relayout', async function (eventdata) {
         mode: "lines",
         x: unpack(global.balances, 'block'),
         y: unpack(global.balances, 'balance'),
+        hoverinfo: "y+text",
+        text: unpack(balances, 'time')
     }
 
     // Add new trace, then remove the old one... is there a better way to do this?
