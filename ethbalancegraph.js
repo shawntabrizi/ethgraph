@@ -51,6 +51,27 @@ function updateUrl(startBlock, endBlock) {
     window.history.replaceState({ path: url }, '', url);
 }
 
+async function getERC20Balance(address, blockNumber, cb) {
+    var address, contractAddress, contractABI, tokenContract, decimals, balance, name, symbol, adjustedBalance;
+    //address = document.getElementById("address").value
+    //contractAddress = document.getElementById("contractAddress").value
+    contractABI = human_standard_token_abi
+
+    address = "0x86754fe967fe4a471fd9fc3c925fc12f4f1a8890" //From Etherscan
+    contractAddress = "0xdac17f958d2ee523a2206206994597c13d831ec7" //OMG
+
+    tokenContract = web3.eth.contract(contractABI).at(contractAddress)
+
+
+   //decimals = promisify(cb => tokenContract.decimals(cb))
+    balance = await promisify(cb => tokenContract.balanceOf(address, cb))
+    console.log(parseFloat(web3.fromWei(balance, 'ether')))
+    return tokenContract.balanceOf(address, blockNumber, cb)
+    //name = promisify(cb => tokenContract.name(cb))
+    //symbol = promisify(cb => tokenContract.symbol(cb))
+
+}
+
 // Given an address and a range of blocks, query the Ethereum blockchain for the ETH balance across the range
 async function getBalanceInRange(address, startBlock, endBlock) {
 
@@ -79,7 +100,7 @@ async function getBalanceInRange(address, startBlock, endBlock) {
             // If we already have data about that block, skip it
             if (!global.balances.find(x => x.block == i)) {
                 // Create a promise to query the ETH balance for that block
-                let balancePromise = promisify(cb => web3.eth.getBalance(address, i, cb));
+                let balancePromise = promisify(cb => getERC20Balance(address, i, cb));
                 // Create a promise to get the timestamp for that block
                 let timePromise = promisify(cb => web3.eth.getBlock(i, cb));
                 // Push data to a linear array of promises to run in parellel.
