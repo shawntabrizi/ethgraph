@@ -9,20 +9,22 @@ var global = {
 const PUBLIC_RPC = "https://ethereum-rpc.publicnode.com";
 const provider = new ethers.JsonRpcProvider(PUBLIC_RPC);
 
-// Get the first transaction block for an address via Etherscan API
+// Default lookback if first-block lookup fails: ~2 million blocks (~9 months)
+const DEFAULT_LOOKBACK = 2000000;
+
+// Get the first transaction block for an address via Blockscout API (no key needed)
 async function getFirstBlock(address) {
     try {
-        let response = await fetch("https://api.etherscan.io/api?module=account&action=txlist&address=" + address + "&startblock=0&page=1&offset=10&sort=asc");
+        let response = await fetch("https://eth.blockscout.com/api?module=account&action=txlist&address=" + address + "&startblock=0&page=1&offset=1&sort=asc");
         let data = await response.json();
 
-        if ((data.result).length > 0) {
-            return data.result[0].blockNumber;
-        } else {
-            return -1;
+        if (data.result && data.result.length > 0) {
+            return parseInt(data.result[0].blockNumber);
         }
     } catch (error) {
-        console.error(error);
+        console.error("Could not look up first block:", error);
     }
+    return -1;
 }
 
 // Update window URL to contain querystring, making it easy to share
@@ -185,31 +187,31 @@ async function graphBalance() {
         // Find the initial range, from first block to current block
         var startBlock, endBlock;
 
-        if (document.getElementById('startBlock').value) {
-            startBlock = parseInt(document.getElementById('startBlock').value);
-        } else {
-            startBlock = parseInt(await getFirstBlock(global.address));
-        }
-
         if (document.getElementById('endBlock').value) {
             endBlock = parseInt(document.getElementById('endBlock').value);
         } else {
             endBlock = await provider.getBlockNumber();
         }
 
-        // Check that the address actually has transactions to show
-        if (startBlock >= 0 && startBlock < endBlock) {
-            // Get the balances from that range, store in global variable
-            global.balances = await getBalanceInRange(global.address, startBlock, endBlock);
-
-            // Create the graph
-            createGraph(global.balances);
-
-            // Set up zoom handler after graph is created
-            setupZoomHandler();
+        if (document.getElementById('startBlock').value) {
+            startBlock = parseInt(document.getElementById('startBlock').value);
         } else {
-            document.getElementById('output').innerHTML = "No transactions found for that address."
+            // Try to find the first transaction block via Blockscout
+            startBlock = await getFirstBlock(global.address);
+            // Fall back to a lookback window if lookup fails
+            if (startBlock < 0) {
+                startBlock = Math.max(0, endBlock - DEFAULT_LOOKBACK);
+            }
         }
+
+        // Get the balances from that range, store in global variable
+        global.balances = await getBalanceInRange(global.address, startBlock, endBlock);
+
+        // Create the graph
+        createGraph(global.balances);
+
+        // Set up zoom handler after graph is created
+        setupZoomHandler();
     } catch (error) {
         document.getElementById("output").innerHTML = error.message;
     }
