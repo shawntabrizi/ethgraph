@@ -5,30 +5,11 @@ var global = {
     pointCount: 200
 }
 
-// Check for MetaMask, otherwise use an HTTP Provider
-window.addEventListener('load', function () {
-    if (typeof web3 !== 'undefined') {
-        console.log('Web3 Detected! ' + web3.currentProvider.constructor.name)
-        window.web3 = new Web3(web3.currentProvider);
-    } else {
-        console.log('No Web3 Detected... using HTTP Provider')
-        window.web3 = new Web3(new Web3.providers.HttpProvider("https://mainnet.infura.io/<APIKEY>"));
-    }
-})
+// Public RPC (no API key needed)
+const PUBLIC_RPC = "https://ethereum-rpc.publicnode.com";
+const provider = new ethers.JsonRpcProvider(PUBLIC_RPC);
 
-// Wrapper for Web3 callback
-const promisify = (inner) =>
-    new Promise((resolve, reject) =>
-        inner((err, res) => {
-            if (err) {
-                reject(err);
-            } else {
-                resolve(res);
-            }
-        })
-    );
-
-// Get the first transaction block for an address
+// Get the first transaction block for an address via Etherscan API
 async function getFirstBlock(address) {
     try {
         let response = await fetch("https://api.etherscan.io/api?module=account&action=txlist&address=" + address + "&startblock=0&page=1&offset=10&sort=asc");
@@ -54,11 +35,11 @@ function updateUrl(startBlock, endBlock) {
 // Given an address and a range of blocks, query the Ethereum blockchain for the ETH balance across the range
 async function getBalanceInRange(address, startBlock, endBlock) {
 
-    //Update UX with Start and End Block
+    // Update UX with Start and End Block
     document.getElementById('startBlock').value = startBlock;
     document.getElementById('endBlock').value = endBlock;
 
-    //Update window URL
+    // Update window URL
     updateUrl(startBlock, endBlock);
 
     // Calculate the step size given the range of blocks and the number of points we want
@@ -72,41 +53,43 @@ async function getBalanceInRange(address, startBlock, endBlock) {
     document.getElementById("output").innerHTML = "Loading";
 
     try {
-        var promises = []
+        var balancePromises = []
+        var blockPromises = []
+        var blocks = []
 
         // Loop over the blocks, using the step value
         for (let i = startBlock; i < endBlock; i = i + step) {
             // If we already have data about that block, skip it
             if (!global.balances.find(x => x.block == i)) {
-                // Create a promise to query the ETH balance for that block
-                let balancePromise = promisify(cb => web3.eth.getBalance(address, i, cb));
-                // Create a promise to get the timestamp for that block
-                let timePromise = promisify(cb => web3.eth.getBlock(i, cb));
-                // Push data to a linear array of promises to run in parellel.
-                promises.push(i, balancePromise, timePromise)
+                blocks.push(i);
+                balancePromises.push(provider.getBalance(address, i));
+                blockPromises.push(provider.getBlock(i));
             }
         }
 
-        // Call all promises in parallel for speed, result is array of {block: <block>, balance: <ETH balance>}
-        var results = await Promise.all(promises);
+        // Call all promises in parallel for speed
+        var [balanceResults, blockResults] = await Promise.all([
+            Promise.all(balancePromises),
+            Promise.all(blockPromises)
+        ]);
 
         // Restructure the data into an array of objects
         var balances = []
-        for (let i = 0; i < results.length; i = i + 3) {
+        for (let i = 0; i < blocks.length; i++) {
             balances.push({
-                block: results[i],
-                balance: parseFloat(web3.fromWei(results[i + 1], 'ether')),
-                time: new Date(results[i + 2].timestamp * 1000)
+                block: blocks[i],
+                balance: parseFloat(ethers.formatEther(balanceResults[i])),
+                time: new Date(blockResults[i].timestamp * 1000)
             })
         }
 
-        //Remove loading message
+        // Remove loading message
         document.getElementById("output").innerHTML = "";
 
         return balances;
 
     } catch (error) {
-        document.getElementById("output").innerHTML = error;
+        document.getElementById("output").innerHTML = error.message;
     }
 }
 
@@ -129,7 +112,6 @@ function createGraph(balances) {
         text: unpack(balances, 'time')
     }
 
-
     // Settings for the graph
     var layout = {
         title: 'ETH Balance over Ethereum Blocks',
@@ -147,7 +129,6 @@ function createGraph(balances) {
     };
 
     Plotly.newPlot('graph', [trace], layout);
-
 }
 
 // Sort function for sort by block value
@@ -156,33 +137,36 @@ function sortBlock(a, b) {
 }
 
 // When the graph is zoomed in, get more data points for that range
-$('#graph').on('plotly_relayout', async function (eventdata) {
-    // Get the new block range from the eventdata from the resize
-    var startBlock = Math.floor(eventdata.target.layout.xaxis.range[0]);
-    var endBlock = Math.ceil(eventdata.target.layout.xaxis.range[1]);
+function setupZoomHandler() {
+    var graphDiv = document.getElementById('graph');
+    graphDiv.on('plotly_relayout', async function (eventdata) {
+        // Get the new block range from the graph layout
+        var startBlock = Math.floor(graphDiv.layout.xaxis.range[0]);
+        var endBlock = Math.ceil(graphDiv.layout.xaxis.range[1]);
 
-    // Get new balance data, and concatenate it to the existing data
-    global.balances = global.balances.concat(await getBalanceInRange(global.address, startBlock, endBlock))
+        // Get new balance data, and concatenate it to the existing data
+        global.balances = global.balances.concat(await getBalanceInRange(global.address, startBlock, endBlock))
 
-    // Sort the data by block number for Plotly.js, since it is a scatter plot
-    global.balances.sort(sortBlock);
+        // Sort the data by block number for Plotly.js, since it is a scatter plot
+        global.balances.sort(sortBlock);
 
-    // Create a new trace with new data
-    var trace = {
-        type: "scatter",
-        mode: "lines",
-        x: unpack(global.balances, 'block'),
-        y: unpack(global.balances, 'balance'),
-        hoverinfo: "y+text",
-        text: unpack(global.balances, 'time')
-    }
+        // Create a new trace with new data
+        var trace = {
+            type: "scatter",
+            mode: "lines",
+            x: unpack(global.balances, 'block'),
+            y: unpack(global.balances, 'balance'),
+            hoverinfo: "y+text",
+            text: unpack(global.balances, 'time')
+        }
 
-    // Add new trace, then remove the old one... is there a better way to do this?
-    Plotly.addTraces('graph', trace);
-    Plotly.deleteTraces('graph', 0);
-});
+        // Add new trace, then remove the old one
+        Plotly.addTraces('graph', trace);
+        Plotly.deleteTraces('graph', 0);
+    });
+}
 
-//Reset the page
+// Reset the page
 function reset() {
     document.getElementById('output').innerHTML = "";
     Plotly.purge('graph');
@@ -198,7 +182,7 @@ async function graphBalance() {
         // Get address from input
         global.address = document.getElementById("address").value;
 
-        // Find the intial range, from first block to current block
+        // Find the initial range, from first block to current block
         var startBlock, endBlock;
 
         if (document.getElementById('startBlock').value) {
@@ -210,7 +194,7 @@ async function graphBalance() {
         if (document.getElementById('endBlock').value) {
             endBlock = parseInt(document.getElementById('endBlock').value);
         } else {
-            endBlock = parseInt(await promisify(cb => web3.eth.getBlockNumber(cb)));
+            endBlock = await provider.getBlockNumber();
         }
 
         // Check that the address actually has transactions to show
@@ -220,51 +204,45 @@ async function graphBalance() {
 
             // Create the graph
             createGraph(global.balances);
+
+            // Set up zoom handler after graph is created
+            setupZoomHandler();
         } else {
             document.getElementById('output').innerHTML = "No transactions found for that address."
         }
     } catch (error) {
-        document.getElementById("output").innerHTML = error;
+        document.getElementById("output").innerHTML = error.message;
     }
 }
 
 // Detect Querystrings
 function parseQueryStrings() {
     var queryStrings = {};
-    //Parse URL
     var url = window.location.search.substring(1);
     if (url) {
-        //split querystrings
         var pairs = url.split("&");
         for (pair in pairs) {
             pairArray = pairs[pair].split("=");
             queryStrings[pairArray[0]] = pairArray[1]
         }
     }
-
     return queryStrings;
 }
 
 // On load, check if querystrings are present
 window.onload = async function () {
-    // Check for querystrings
     var queryStrings = parseQueryStrings();
-    // Set address, and run query from first transaction block to current block
+
     if (queryStrings['address']) {
         document.getElementById('address').value = queryStrings['address'];
-        await graphBalance();
     }
-    // Set starting block
     if (queryStrings['start']) {
         document.getElementById('startBlock').value = queryStrings['start'];
     }
-    // Set ending block
     if (queryStrings['end']) {
         document.getElementById('endBlock').value = queryStrings['end'];
     }
-    // Adjust range to be what the querystring wants
-    if (queryStrings['start'] || queryStrings['end']) {
-        Plotly.relayout('graph', 'xaxis.range', [document.getElementById('startBlock').value, document.getElementById('endBlock').value]);
+    if (queryStrings['address']) {
+        await graphBalance();
     }
-
 }
